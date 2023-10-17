@@ -1,44 +1,46 @@
 """Main file for the project."""
 import subprocess
 import os
-import click
 
-class JobInfo:
-    """Class to store information about a job."""
-    def __init__(self, test: str):
-        self.test = test
+valid_params = [
+    "receptor", "flex", "ligand", "ligand_index", "batch", "gpu_batch", "scoring",
+    "maps", "center_x", "center_y", "center_z", "size_x", "size_y", "size_z", "autobox",
+    "out", "dir", "write_maps", "cpu", "seed", "exhaustiveness", "max_evals", "num_modes",
+    "min_rmsd", "energy_range", "spacing", "verbosity", "max_step", "refine_step", "max_gpu_memory",
+    "search_mode", "config", "help", "version"
+]
 
-    def __str__(self):
-        return self.test
-
-@click.command()
-@click.argument('receptor_path', type=click.Path(exists=True))
-@click.argument('ligand_dir', type=click.Path(exists=True))
-@click.argument('output_dir', type=click.Path(exists=True))
-@click.argument('search_mode', type=click.Choice(['fast', 'balance', 'detail']), default='fast')
-def run_unidock(receptor_path: str, ligand_dir: str, output_dir: str, search_mode: str) -> JobInfo:
+def run_unidock(**kwargs):
     """Runs Uni-Dock."""
+    # Check that all parameters are valid
+    for param in kwargs:
+        if param not in valid_params:
+            raise ValueError(f"Invalid parameter: {param}")
+    
     # Get all ligand files from the input directory
-    ligand_files = os.listdir(ligand_dir)
-    ligand_files = [os.path.join(ligand_dir, file) for file in ligand_files]
+    if "gpu_batch" in kwargs:
+        ligand_dir = kwargs["gpu_batch"]
+        ligand_files = os.listdir(ligand_dir)
+        ligand_files = [os.path.join(ligand_dir, file) for file in ligand_files]
 
-    # Construct the bash command
-    command = [
-        "unidock",
-        "--receptor", receptor_path,
-        "--gpu_batch", *ligand_files[1:300],
-        "--dir", output_dir,
-        "--center_x", "-36.0095",
-        "--center_y", "25.628500000000003",
-        "--center_z", "67.49199999999999",
-        "--size_x", "17.201",
-        "--size_y", "14.375000000000004",
-        "--size_z", "12.239999999999995",
-        "--search_mode", search_mode
-        ]
+    # Construct the command
+    command = ["unidock"]
+    for param, value in kwargs.items():
+        command.append(f"--{param}")
+        command.append(str(value))
 
     # Run the command
     subprocess.check_call(command)
 
+
+def main():
+    """Main function for the project."""
+    # Run Uni-Dock
+    run_unidock(receptor="data/inputs/mmp13.pdbqt", gpu_batch="data/inputs/ligands", dir="data/outputs",
+                center_x=-36.0095, center_y=25.628500000000003, center_z=67.49199999999999,
+                size_x=17.201, size_y=14.375000000000004, size_z=12.239999999999995
+                )
+
+
 if __name__ == "__main__":
-    run_unidock()
+    main()

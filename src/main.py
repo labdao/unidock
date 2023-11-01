@@ -1,6 +1,8 @@
 """Main file for the project."""
 import subprocess
 import os
+from pathlib import Path
+import tempfile
 import pickle
 
 valid_params = [
@@ -40,9 +42,33 @@ valid_params = [
     "version",
 ]
 
+class Receptor:
+    """A class to represent a receptor file"""
+
+    ACCEPTED_EXTENSIONS = [".pdb"]
+
+    def __init__(self, filepath: str):
+        self.filepath = Path(filepath)
+        self.extension = self.filepath.suffix
+        self.receptor_dir = self.filepath.parent
+        self.receptor_name = self.filepath.stem
+        # Throw an exception if filetype not supported
+        if self.extension not in Receptor.ACCEPTED_EXTENSIONS:
+            raise ValueError(f"Invalid file type. Acceptable types are {self.ACCEPTED_EXTENSIONS}")
+        
+    def convert_to_pdbqt(self):
+        """Converts file types to pdbqt"""
+        if self.extension == ".pdb":
+            with tempfile.NamedTemporaryFile(suffix=".pdb") as tmp:
+                subprocess.run(["reduce", self.filepath], stdout=tmp, check=False)
+                pdbqt_filepath = str(self.receptor_dir) + str(self.receptor_name) + ".pdbqt"
+                subprocess.run(["prepare_receptor", "-r", tmp.name, "-o", pdbqt_filepath], check=False)
+                self.filepath = Path(pdbqt_filepath)
+
 
 def run_unidock(**kwargs):
     """Runs Uni-Dock."""
+    
     # Check that all parameters are valid
     for param in kwargs:
         if param not in valid_params:
@@ -71,6 +97,7 @@ def run_unidock(**kwargs):
 
 def parse_outputs(output_dir):
     """Processes the pdbqt outputs into a list of dictionaries."""
+     
     # Get all ligand files from the output directory
     ligand_files = [os.path.join(output_dir, f) for f in os.listdir(output_dir)]
     # Variables to extract
@@ -111,6 +138,14 @@ def parse_outputs(output_dir):
 
 def main():
     """Main function for the project."""
+
+    # Prepare filetype
+    receptor = Receptor("./data/inputs/7x1i.pdb")
+    test = receptor.filepath
+    receptor.convert_to_pdbqt()
+    print(test)
+    print(receptor.filepath)
+
     # Run Uni-Dock
     run_unidock(receptor="data/inputs/mmp13.pdbqt",
                 gpu_batch="data/inputs/ligands",

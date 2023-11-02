@@ -3,7 +3,9 @@ FROM nvidia/cuda:12.2.0-devel-ubuntu22.04
 RUN apt-get update && apt install -y cmake \
     libboost-system-dev libboost-thread-dev libboost-serialization-dev \
     libboost-filesystem-dev libboost-program-options-dev libboost-timer-dev \
+    libsm6 \
     wget \
+    openbabel \
     python3 git python3-pip && \
     ln -s /usr/bin/python3 /usr/bin/python
 

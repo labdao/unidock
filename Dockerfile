@@ -32,7 +32,7 @@ RUN cd opt && \
 ENV PATH="/opt/ADFRsuite_x86_64Linux_1.0/afdr/bin:${PATH}"
 
 # Copy source files into app folder
-COPY . /app
+COPY ./src /app
 
 # Move into app folder
 WORKDIR /app

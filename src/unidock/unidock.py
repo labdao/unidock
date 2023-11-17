@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 import tempfile
 import pickle
+import time
 
 
 class MoleculeConvertor:
@@ -60,7 +61,7 @@ class MoleculeConvertor:
         )
 
 
-class UnidockRunner:
+class UniDockRunner:
     """Class for running the Uni-Dock application"""
 
     VALID_PARAMS = [
@@ -132,7 +133,7 @@ class UnidockRunner:
     def _check_param_validity(self):
         # Check that all parameters are valid
         for param in self.config:
-            if param not in UnidockRunner.VALID_PARAMS:
+            if param not in UniDockRunner.VALID_PARAMS:
                 raise ValueError(f"Invalid parameter: {param}")
 
     def parse_outputs(self):
@@ -140,7 +141,7 @@ class UnidockRunner:
 
         # Get all ligand files from the output directory
         ligand_files = [
-            os.path.join(self.config.dir, f) for f in os.listdir(self.config.dir)
+            os.path.join(self.config['dir'], f) for f in os.listdir(self.config['dir'])
         ]
         # Variables to extract
         key_var_names = ["INTER + INTRA", "INTER", "INTRA", "UNBOUND", "NAME"]
@@ -171,7 +172,7 @@ class UnidockRunner:
                     res_dict = dict(zip(key_var_names, res))
                     # Add the dictionary to the list of results
                     model_results.append(res_dict)
-
+ 
             # Add the results for all models for the given ligand
             ligand_results.append(model_results)
 
@@ -181,17 +182,17 @@ class UnidockRunner:
 def main():
     """Main function for the project."""
 
-    # Instantiate a molecule convertor
-    mol_con = MoleculeConvertor("/app/data/inputs/SDF_ideal.sdf", "/app/data/inputs")
+    # # Instantiate a molecule convertor
+    # mol_con = MoleculeConvertor("/app/data/inputs/", "/app/data/inputs")
 
-    # Covert inputs to pdbqt files
-    mol_con.convert_to_pdbqt()
+    # # Covert inputs to pdbqt files
+    # mol_con.convert_to_pdbqt()
 
     # Instantiate a Uni-Dock runner
-    runner = UnidockRunner(
+    runner = UniDockRunner(
         {
             "receptor": "data/inputs/mmp13.pdbqt",
-            "gpu_batch": "data/inputs/ligands",
+            "gpu_batch": "data/inputs/single_ligand",
             "dir": "data/outputs",
             "center_x": -6.9315,
             "center_y": 26.579,
@@ -206,13 +207,16 @@ def main():
     # Run the Uni-Dock application
     runner.run()
 
-    # Parse the docked ligands
-    results = runner.parse_outputs()
+    # # Parse the docked ligands
+    # results = runner.parse_outputs()
 
-    # Save the results to a pickle file
-    with open("data/results.pkl", "wb") as file:
-        pickle.dump(results, file)
+    # # Save the results to a pickle file
+    # with open("data/results.pkl", "wb") as file:
+    #     pickle.dump(results, file)
 
 
 if __name__ == "__main__":
+    start_time = time.time()
     main()
+    end_time = time.time()
+    print(f"Time for run: {end_time - start_time}")

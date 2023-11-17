@@ -1,10 +1,16 @@
 receptor: <path_to_receptor.pdbqt>    # CORE rigid part of the receptor (PDBQT or PDB)
 flex: <path_to_flex.pdbqt>            # flexible side chains, if any (PDBQT or PDB)
-ligand: <path_to_ligand.pdbqt>        # ligand (PDBQT)
-ligand_index: <path_to_index.txt>     # CORE file containing paths to ligands
-batch: <path_to_batch_ligands.pdbqt>  # batch ligand
-gpu_batch: <path_to_gpu_batch_ligands.pdbqt> # gpu batch ligand
 scoring: vina                         # CORE scoring function (ad4, vina, or vinardo)
+
+ligand:
+  single: <path_to_ligand.pdbqt>      # path to single ligand (PDBQT)
+  index: <path_to_index.txt>          # CORE path to file containing paths to multiple ligands
+  batch: <path_to_batch_ligands.pdbqt> # space-separated paths for batch mode
+  gpu_batch: <path_to_gpu_batch_ligands.pdbqt> # space-separated paths for gpu batch mode
+  min_HAC: <min_count>                # minimum number of heavy atoms
+  max_HAC: <max_count>                # maximum number of heavy atoms
+  min_logP: <min_val>                 # minimum logP value
+  max_logP: <max_val>                 # maximum logP value
 
 search_space:
   maps: <path_to_maps>                # affinity maps for the scoring function

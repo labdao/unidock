@@ -10,7 +10,7 @@ RUN apt-get update && apt install -y cmake \
     ln -s /usr/bin/python3 /usr/bin/python
 
 # Install python dependencies
-RUN pip install click
+RUN pip install click duckdb
 
 # Install uni-dock
 RUN cd opt && \

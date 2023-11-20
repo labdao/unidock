@@ -3,7 +3,8 @@ from typing import List, Callable
 from pathlib import Path
 import subprocess
 import duckdb
-import tempfile
+from functools import wraps
+
 
 VALID_FILE_TYPES = ["smi", "pdb"]
 
@@ -61,9 +62,14 @@ def retrieve_smiles(input_path: str) -> List[str]:
 
 def smiles_to_smi(smiles_strings: List[str], output_path: str) -> None:
     """Write SMILES strings to smi file"""
-     # Save list of SMILES strings to smi file
-    with open(output_path, 'w', encoding='utf-8') as file:
-        for smiles_string in smiles_strings:
+    # Create an empty output directory if not present
+    if not os.path.exists(output_path):
+        os.makedirs(output_path)
+
+    # Save each SMILES string to individual smi file
+    for i, smiles_string in enumerate(smiles_strings):
+        output_file = os.path.join(output_path,f"ligand_{i}.smi")
+        with open(output_file, 'w', encoding='utf-8') as file:
             file.write(f"{smiles_string}\n")
 
 
@@ -72,15 +78,35 @@ ConvertFn = Callable[[str, str], None]
 
 def context(strategy: ConvertFn, input_path: str, output_path: str) -> None:
     """Converts chemical formats to pdbqt"""
-    # Checks if file type is valid
-    file_type = Path(input_path).suffix[1:]
-    if file_type not in VALID_FILE_TYPES:
-        raise ValueError(f"File type not supported: {file_type}")
+    # Checks to see if input_path is a directory
+    if os.path.isdir(input_path):
+        # Creates output directory if doesn't exist
+        if not os.path.exists(output_path):
+            os.makedirs(output_path)
+        # Converts each file if input path is directory
+        for input_file in os.listdir(input_path):
+            # Creates full input file name
+            input_file_with_dir = os.path.join(input_path, input_file)
+            # Creates output file name with the same stem as the input file
+            output_file = os.path.join(output_path, f"{Path(input_file).stem}.pdbqt")
+            strategy(input_file_with_dir, output_file)
+    else:
+        strategy(input_path, output_path)
 
-    # Converts small molecules to pdbqt type
-    strategy(input_path, output_path)
+
+def check_file_type(func):
+    """Decorator to check if file type is valid"""
+    @wraps(func)
+    def inner(input_path, output_path):
+        # Checks if file type is valid
+        file_type = Path(input_path).suffix[1:]
+        if file_type not in VALID_FILE_TYPES:
+            raise ValueError(f"File type not supported: {file_type}")
+        func(input_path, output_path)
+    return inner
 
 
+@check_file_type
 def smi_convert(input_path: str, output_path: str) -> None:
     """Convert from .smi format to pdbqt"""
     subprocess.run(
@@ -97,6 +123,25 @@ def smi_convert(input_path: str, output_path: str) -> None:
         ],
         check=False,
     )
+
+
+@check_file_type
+def pdb_convert(input_path: str, output_path: str) -> None:
+    """Converts .pdb to pdbqt"""
+    subprocess.run(
+        [
+            "obabel",
+            "-i",
+            "pdb",
+            input_path,
+            "-o",
+            "pdbqt",
+            "-O",
+            output_path,
+        ],
+        check=False,
+    )
+
 
 class UniDock:
     """Class for running the Uni-Dock application"""
@@ -138,7 +183,6 @@ class UniDock:
 
     def parse_outputs(self):
         """Processes the pdbqt outputs into a list of dictionaries."""
-
         # Get all ligand files from the output directory
         ligand_files = [
             os.path.join(self.config["dir"], f) for f in os.listdir(self.config["dir"])
@@ -178,37 +222,18 @@ class UniDock:
 
         return ligand_results
 
-
-
-
-def pdb_convert(input_path: str, output_path: str) -> None:
-    """Converts .pdb to pdbqt"""
-    subprocess.run(
-        [
-            "obabel",
-            "-i",
-            "pdb",
-            input_path,
-            "-o",
-            "pdbqt",
-            "-O",
-            output_path,
-        ],
-        check=False,
-    )
-
 def main():
     # Retrieve small molcule SMILES from database
     smiles = retrieve_smiles("/home/ubuntu/uni-dock/data/inputs/ligands.parquet")
 
-    # Convert small molecule SMILES to .smi file
-    smiles_to_smi(smiles, "/home/ubuntu/uni-dock/data/processed/ligands.smi")
+    # Convert small molecule SMILES to .smi files
+    smiles_to_smi(smiles, "/home/ubuntu/uni-dock/data/processed/smi_ligands")
 
     # Convert small molecule smi file to pdbqt
     context(
         smi_convert,
-        "/home/ubuntu/uni-dock/data/processed/ligands.smi",
-        "/home/ubuntu/uni-dock/data/processed/ligands.pdbqt"
+        "/home/ubuntu/uni-dock/data/processed/smi_ligands",
+        "/home/ubuntu/uni-dock/data/processed/pdbqt_ligands"
         )
 
     # Convert target pdb file to pdbqt
@@ -218,24 +243,24 @@ def main():
         "/home/ubuntu/uni-dock/data/processed/target.pdbqt"
     )
 
-    # Create Uni-Dock object
-    unidock = UniDock(
-        {
-            "receptor": "data/inputs/mmp13.pdbqt",
-            "gpu_batch": "data/inputs/",
-            "dir": "data/outputs",
-            "center_x": -6.9315,
-            "center_y": 26.579,
-            "center_z": 54.135999999999996,
-            "size_x": 15.341000000000001,
-            "size_y": 10.828,
-            "size_z": 17.556000000000004,
-            "search_mode": "fast",
-        }
-    )
+    # # Create Uni-Dock object
+    # unidock = UniDock(
+    #     {
+    #         "receptor": "data/inputs/mmp13.pdbqt",
+    #         "gpu_batch": "data/inputs/",
+    #         "dir": "data/outputs",
+    #         "center_x": -6.9315,
+    #         "center_y": 26.579,
+    #         "center_z": 54.135999999999996,
+    #         "size_x": 15.341000000000001,
+    #         "size_y": 10.828,
+    #         "size_z": 17.556000000000004,
+    #         "search_mode": "fast",
+    #     }
+    # )
 
-    # Run UniDock
-    unidock.run()
+    # # Run UniDock
+    # unidock.run()
 
 if __name__=="__main__":
     main()

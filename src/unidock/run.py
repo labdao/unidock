@@ -177,7 +177,7 @@ class UniDock:
             if param not in VALID_PARAMS:
                 raise ValueError(f"Invalid parameter: {param}")
 
-    def save_results(self, output_path: str) -> None:
+    def save_results(self, output_path: str, best=False) -> None:
         """Processes the pdbqt outputs into a list of dictionaries."""
         # Get all ligand files from the output directory
         ligand_files = [
@@ -220,8 +220,13 @@ class UniDock:
         new_col_order = [ "NAME", "MODEL", "AFFINITY", "RMSD lower", "RMSD upper", "INTER + INTRA", "INTER", "INTRA", "UNBOUND"]
         df = df[new_col_order]
 
-        # Save the csv
-        df.to_csv(output_path)
+        # Save all poses to csv
+        df.to_csv(output_path, index=False)
+
+        # Save the best pose for each ligand if best=True
+        if best:
+            df = self._get_best_pose(df)
+            df.to_csv(output_path.replace(".csv", "_best.csv"), index=False)
 
     def _get_floats(self, string):
         """Extracts floating point values from a string containing whitespace and text."""
@@ -232,6 +237,15 @@ class UniDock:
         # Get numbers and convert them to float
         return [float(num) for num in matches]
 
+    def _get_best_pose(self, all_poses_df: pd.DataFrame):
+        """Identifies best configuration for each ligand."""
+        # Group by ligand
+        grouped_ligands = all_poses_df.groupby("NAME")
+        # Get the index of the pose with the highest affinity (most negative score) for each group
+        best_poses_indices = grouped_ligands["AFFINITY"].idxmin()
+        # Select the poses with the highest affinity for each group
+        best_poses_df = all_poses_df.loc[best_poses_indices]
+        return best_poses_df
 
 def main():
     # Retrieve small molcule SMILES from database
@@ -274,7 +288,7 @@ def main():
     unidock.run()
 
     # Save outputs
-    unidock.save_results("/home/ubuntu/uni-dock/data/pdbqt_inputs/results.csv")
+    unidock.save_results("./data/pdbqt_inputs/results.csv ", best=True)
 
 
 if __name__ == "__main__":

@@ -9,9 +9,6 @@ RUN apt-get update && apt install -y cmake \
     python3 git python3-pip && \
     ln -s /usr/bin/python3 /usr/bin/python
 
-# Install python dependencies
-RUN pip install duckdb
-
 # Install uni-dock
 RUN cd opt && \
     git clone https://github.com/dptech-corp/Uni-Dock.git && \
@@ -28,6 +25,9 @@ RUN cd opt && \
     rm adfr.tar.gz && \
     cd ADFRsuite_x86_64Linux_1.0 && \
     echo "Y" | ./install.sh -d afdr -c 0
+
+# Install python dependencies
+RUN pip install duckdb pandas
 
 ENV PATH="/opt/ADFRsuite_x86_64Linux_1.0/afdr/bin:${PATH}"
 

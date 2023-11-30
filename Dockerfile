@@ -25,6 +25,8 @@ RUN cd opt && \
 # Install python dependencies
 RUN pip install duckdb pandas
 
+ENV PATH="./bin:${PATH}"
+
 ENV PATH="/opt/ADFRsuite_x86_64Linux_1.0/afdr/bin:${PATH}"
 
 # Copy source files into app folder

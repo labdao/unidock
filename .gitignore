@@ -1,12 +1,12 @@
+# Data
 data/
 
+# Caches
 __pycache__
+.pytest_cache
 
 # Configs
 .vscode
-
-# Testing
-.pytest_cache
 
 # Envs
 .venv/

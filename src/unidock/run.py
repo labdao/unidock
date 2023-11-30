@@ -249,17 +249,17 @@ class UniDock:
 
 def main():
     # Retrieve small molcule SMILES from database
-    smiles = retrieve_smiles("./data/smiles_inputs/inputs/ligands.parquet")
+    smiles = retrieve_smiles("./data/smiles_ligands.parquet")
 
     # Convert small molecule SMILES to .smi files
     smiles_to_smi(smiles, "./data/processed/smi_ligands")
 
-    # # Convert small molecule smi file to pdbqt
-    # context(
-    #     smi_convert,
-    #     "./data/processed/smi_ligands",
-    #     "./data/processed/pdbqt_ligands",
-    # )
+    # Convert small molecule smi file to pdbqt
+    context(
+        smi_convert,
+        "./data/processed/smi_ligands",
+        "./data/processed/pdbqt_ligands",
+    )
 
     # # Convert target pdb file to pdbqt
     # context(
@@ -268,27 +268,27 @@ def main():
     #     "./data/processed/target.pdbqt",
     # )
 
-    # # Create Uni-Dock object
-    # unidock = UniDock(
-    #     {
-    #         "receptor": "./data/pdbqt_inputs/mmp13.pdbqt",
-    #         "gpu_batch": "./data/pdbqt_inputs/ligands",
-    #         "dir": "./data/pdbqt_inputs/outputs",
-    #         "center_x": -6.9315,
-    #         "center_y": 26.579,
-    #         "center_z": 54.135999999999996,
-    #         "size_x": 15.341000000000001,
-    #         "size_y": 10.828,
-    #         "size_z": 17.556000000000004,
-    #         "search_mode": "fast",
-    #     }
-    # )
+    # Create Uni-Dock object
+    unidock = UniDock(
+        {
+            "receptor": "./data/mmp13_receptor.pdbqt",
+            "gpu_batch": "./data/processed/pdbqt_ligands",
+            "dir": "./data/outputs",
+            "center_x": -6.9315,
+            "center_y": 26.579,
+            "center_z": 54.135999999999996,
+            "size_x": 15.341000000000001,
+            "size_y": 10.828,
+            "size_z": 17.556000000000004,
+            "search_mode": "fast",
+        }
+    )
 
-    # # Run UniDock
-    # unidock.run()
+    # Run UniDock
+    unidock.run()
 
-    # # Save outputs
-    # unidock.save_results("./data/pdbqt_inputs/results.csv ", best=True)
+    # Save outputs
+    unidock.save_results("./data/results.csv ", best=True)
 
 
 if __name__ == "__main__":

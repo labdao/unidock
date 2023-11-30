@@ -11,12 +11,8 @@ RUN apt-get update && apt install -y cmake \
 
 # Install uni-dock
 RUN cd opt && \
-    git clone https://github.com/dptech-corp/Uni-Dock.git && \
-    cd /opt/Uni-Dock/unidock && \
-    cmake -B build && \
-    cmake --build build -j`nprocs` && \
-    cmake --install build && \
-    rm -r /opt/Uni-Dock
+    wget https://github.com/dptech-corp/Uni-Dock/releases/download/1.0.0/unidock && \
+    chmod +x ./unidock
 
 # Download AFDR tooling
 RUN cd opt && \

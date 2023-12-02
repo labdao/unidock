@@ -1,11 +1,15 @@
 [project]
 name = "unidock"
 version = "0.1.0"
-description = "Add your description here"
+description = "A python wrapper for the Uni-Dock GPU-accelerated docking application"
 authors = [
     { name = "sethhowes", email = "sethshowes@gmail.com" }
 ]
-dependencies = []
+dependencies = [
+    "pandas>=2.0.3",
+    "hydra-zen>=0.11.0",
+    "duckdb>=0.9.2",
+]
 readme = "README.md"
 requires-python = ">= 3.8"
 
@@ -15,7 +19,9 @@ build-backend = "hatchling.build"
 
 [tool.rye]
 managed = true
-dev-dependencies = []
+dev-dependencies = [
+    "black>=23.11.0",
+]
 
 [tool.hatch.metadata]
 allow-direct-references = true

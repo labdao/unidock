@@ -9,8 +9,8 @@ from ._mol_convert import (
     smi_convert,
     pdb_convert,
     smiles_to_smi,
-    context
-    )
+    context,
+)
 
 
 VALID_PARAMS = [
@@ -95,7 +95,16 @@ class UniDock:
             os.path.join(self.config["dir"], f) for f in os.listdir(self.config["dir"])
         ]
         # Variables to extract
-        key_var_names = ["AFFINITY", "RMSD lower", "RMSD upper", "INTER + INTRA", "INTER", "INTRA", "UNBOUND", "NAME"]
+        key_var_names = [
+            "AFFINITY",
+            "RMSD lower",
+            "RMSD upper",
+            "INTER + INTRA",
+            "INTER",
+            "INTRA",
+            "UNBOUND",
+            "NAME",
+        ]
         # List containing results for each ligand model
         ligand_results = []
 
@@ -110,17 +119,19 @@ class UniDock:
 
                 # Extract key information from each model
                 for model_num, i in enumerate(model_line_indices):
-                    res_lines = lines[i+1 : i+6]
+                    res_lines = lines[i + 1 : i + 6]
                     # Get first three values
                     res_vals = self._get_floats(res_lines[0])
                     # Extracts values from lines and add to results list
-                    res_vals.extend([float(line.split(":")[1].strip()) for line in res_lines[1:]])
+                    res_vals.extend(
+                        [float(line.split(":")[1].strip()) for line in res_lines[1:]]
+                    )
                     # Add the ligand name
                     res_vals.append(lines[i + 6].split("=")[1].strip())
                     # Create a dictionary of the results
                     res_dict = dict(zip(key_var_names, res_vals))
                     # Add a value to the dictionary corresponding to the model number
-                    res_dict['MODEL'] = model_num + 1
+                    res_dict["MODEL"] = model_num + 1
                     # Add the dictionary to the list of results
                     ligand_results.append(res_dict)
 
@@ -128,7 +139,17 @@ class UniDock:
         df = pd.DataFrame(ligand_results)
 
         # Reorder column names
-        new_col_order = [ "NAME", "MODEL", "AFFINITY", "RMSD lower", "RMSD upper", "INTER + INTRA", "INTER", "INTRA", "UNBOUND"]
+        new_col_order = [
+            "NAME",
+            "MODEL",
+            "AFFINITY",
+            "RMSD lower",
+            "RMSD upper",
+            "INTER + INTRA",
+            "INTER",
+            "INTRA",
+            "UNBOUND",
+        ]
         df = df[new_col_order]
 
         # Save all poses to csv
@@ -165,7 +186,10 @@ class UniDock:
 # - bounding box details : dict
 # - output_dir: str
 
-def run_unidock_with_smiles(smiles_file: str, receptor_file: str, output_dir: str, bounding_box: dict):
+
+def run_unidock_with_smiles(
+    smiles_file: str, receptor_file: str, output_dir: str, bounding_box: dict
+):
     # Retrieve small molcule SMILES from database
     smiles = retrieve_smiles(smiles_file)
 
@@ -207,12 +231,11 @@ def run_unidock_with_smiles(smiles_file: str, receptor_file: str, output_dir: st
 def main():
     Config = builds(run_unidock_with_smiles, populate_full_signature=True)
     wrapped_fn = zen(run_unidock_with_smiles)
-    job = launch(Config, wrapped_fn, overrides=[
-        "smiles_file=",
-        "receptor_file=",
-        "output_dir=",
-        "bounding_box="],
-        version_base="1.1"
+    job = launch(
+        Config,
+        wrapped_fn,
+        overrides=["smiles_file=", "receptor_file=", "output_dir=", "bounding_box="],
+        version_base="1.1",
     )
 
 

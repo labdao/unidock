@@ -1,16 +1,17 @@
 """Module for implementing Uni-Dock pipeline."""
 import os
-from typing import List, Callable
-from pathlib import Path
 import subprocess
-from functools import wraps
-import tempfile
 import re
 import pandas as pd
-import duckdb
+from hydra_zen import builds, zen, launch
+from ._mol_convert import (
+    retrieve_smiles,
+    smi_convert,
+    pdb_convert,
+    smiles_to_smi,
+    context
+    )
 
-
-VALID_FILE_TYPES = ["smi", "pdb"]
 
 VALID_PARAMS = [
     "receptor",
@@ -48,96 +49,6 @@ VALID_PARAMS = [
     "help",
     "version",
 ]
-
-
-def retrieve_smiles(input_path: str) -> List[str]:
-    """Return a subset of SMILES from a duckdb database"""
-
-    # Construct the duckdb SQL query
-    query = f"SELECT * FROM read_parquet('{input_path}')"
-
-    # Return SMILES as a list of tuples each with a single SMILES string
-    results_as_tuples = duckdb.sql(query).fetchall()
-
-    # Converts tuples to single list elements
-    results_as_strings = [tup[0] for tup in results_as_tuples]
-
-    return results_as_strings
-
-
-def smiles_to_smi(smiles_strings: List[str], output_path: str) -> None:
-    """Write SMILES strings to smi file"""
-    # Create an empty output directory if not present
-    if not os.path.exists(output_path):
-        os.makedirs(output_path)
-
-    # Save each SMILES string to individual smi file
-    for i, smiles_string in enumerate(smiles_strings):
-        output_file = os.path.join(output_path, f"ligand_{i}.smi")
-        with open(output_file, "w", encoding="utf-8") as file:
-            file.write(f"{smiles_string}\n")
-
-
-ConvertFn = Callable[[str, str], None]
-
-
-def context(strategy: ConvertFn, input_path: str, output_path: str) -> None:
-    """Converts chemical formats to pdbqt"""
-    # Checks to see if input_path is a directory
-    if os.path.isdir(input_path):
-        # Creates output directory if doesn't exist
-        if not os.path.exists(output_path):
-            os.makedirs(output_path)
-        # Converts each file if input path is directory
-        for input_file in os.listdir(input_path):
-            # Creates full input file name
-            input_file_with_dir = os.path.join(input_path, input_file)
-            # Creates output file name with the same stem as the input file
-            output_file = os.path.join(output_path, f"{Path(input_file).stem}.pdbqt")
-            strategy(input_file_with_dir, output_file)
-    else:
-        strategy(input_path, output_path)
-
-
-def check_file_type(func):
-    """Decorator to check if file type is valid"""
-
-    @wraps(func)
-    def inner(input_path, output_path):
-        # Checks if file type is valid
-        file_type = Path(input_path).suffix[1:]
-        if file_type not in VALID_FILE_TYPES:
-            raise ValueError(f"File type not supported: {file_type}")
-        func(input_path, output_path)
-
-    return inner
-
-
-@check_file_type
-def smi_convert(input_path: str, output_path: str) -> None:
-    """Convert from .smi format to pdbqt"""
-    subprocess.run(
-        [
-            "obabel",
-            "-i",
-            "smi",
-            input_path,
-            "--gen3d",
-            "-o",
-            "pdbqt",
-            "-O",
-            output_path,
-        ],
-        check=False,
-    )
-
-
-@check_file_type
-def pdb_convert(input_path: str, output_path: str) -> None:
-    """Converts .pdb to pdbqt"""
-    with tempfile.NamedTemporaryFile(suffix=".pdb") as tmp:
-        subprocess.run(["reduce", input_path], stdout=tmp, check=False)
-        subprocess.run(["prepare_receptor", "-r", tmp.name, "-o", output_path], check=False)
 
 
 class UniDock:
@@ -247,39 +158,41 @@ class UniDock:
         best_poses_df = all_poses_df.loc[best_poses_indices]
         return best_poses_df
 
-def main():
+
+# Params for running:
+# - smiles_file(smiles): str
+# - receptor_file(pdb): str
+# - bounding box details : dict
+# - output_dir: str
+
+def run_unidock_with_smiles(smiles_file: str, receptor_file: str, output_dir: str, bounding_box: dict):
     # Retrieve small molcule SMILES from database
-    smiles = retrieve_smiles("./data/smiles_ligands.parquet")
+    smiles = retrieve_smiles(smiles_file)
 
     # Convert small molecule SMILES to .smi files
-    smiles_to_smi(smiles, "./data/processed/smi_ligands")
+    smiles_to_smi(smiles, os.path.join(output_dir, "processed/smi_ligands"))
 
     # Convert small molecule smi file to pdbqt
     context(
         smi_convert,
-        "./data/processed/smi_ligands",
-        "./data/processed/pdbqt_ligands",
+        os.path.join(output_dir, "processed/smi_ligands"),
+        os.path.join(output_dir, "processed/pdbqt_ligands"),
     )
 
-    # # Convert target pdb file to pdbqt
-    # context(
-    #     pdb_convert,
-    #     "./data/inputs/1adc.pdb",
-    #     "./data/processed/target.pdbqt",
-    # )
+    # Convert target pdb file to pdbqt
+    context(
+        pdb_convert,
+        receptor_file,
+        os.path.join(output_dir, "processed/receptor.pdbqt"),
+    )
 
     # Create Uni-Dock object
     unidock = UniDock(
         {
-            "receptor": "./data/mmp13_receptor.pdbqt",
-            "gpu_batch": "./data/processed/pdbqt_ligands",
-            "dir": "./data/outputs",
-            "center_x": -6.9315,
-            "center_y": 26.579,
-            "center_z": 54.135999999999996,
-            "size_x": 15.341000000000001,
-            "size_y": 10.828,
-            "size_z": 17.556000000000004,
+            "receptor": os.path.join(output_dir, "processed/receptor.pdbqt"),
+            "gpu_batch": os.path.join(output_dir, "processed/pdbqt_ligands"),
+            "dir": output_dir,
+            **bounding_box,
             "search_mode": "fast",
         }
     )
@@ -288,7 +201,19 @@ def main():
     unidock.run()
 
     # Save outputs
-    unidock.save_results("./data/results.csv ", best=True)
+    unidock.save_results(os.path.join(output_dir, "results.csv"), best=True)
+
+
+def main():
+    Config = builds(run_unidock_with_smiles, populate_full_signature=True)
+    wrapped_fn = zen(run_unidock_with_smiles)
+    job = launch(Config, wrapped_fn, overrides=[
+        "smiles_file=",
+        "receptor_file=",
+        "output_dir=",
+        "bounding_box="],
+        version_base="1.1"
+    )
 
 
 if __name__ == "__main__":

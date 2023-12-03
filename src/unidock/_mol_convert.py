@@ -8,7 +8,7 @@ from functools import wraps
 import duckdb
 
 
-VALID_FILE_TYPES = ["smi", "pdb"]
+VALID_FILE_TYPES = ["smi", "pdb", "parquet"]
 
 
 def retrieve_smiles(input_path: str) -> List[str]:
@@ -89,7 +89,7 @@ def smi_convert(input_path: str, output_path: str) -> None:
             "-O",
             output_path,
         ],
-        check=False,
+        check=True,
     )
 
 

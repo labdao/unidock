@@ -3,8 +3,9 @@ import os
 import subprocess
 import re
 import pandas as pd
-from hydra_zen import builds, zen, launch
-from ._mol_convert import (
+import hydra
+from omegaconf import DictConfig
+from unidock._mol_convert import (
     retrieve_smiles,
     smi_convert,
     pdb_convert,
@@ -67,6 +68,9 @@ class UniDock:
             ligand_dir = self.config["gpu_batch"]
             ligand_files = os.listdir(ligand_dir)
             ligand_files = [os.path.join(ligand_dir, file) for file in ligand_files]
+ 
+        # Create output poses directory
+        os.makedirs(self.config["dir"])
 
         # Construct the command
         command = ["unidock"]
@@ -80,7 +84,7 @@ class UniDock:
                 command.append(str(value))
 
         # Run the command
-        subprocess.run(command, check=False)
+        subprocess.run(command, check=True)
 
     def _check_param_validity(self):
         # Check that all parameters are valid
@@ -89,7 +93,7 @@ class UniDock:
                 raise ValueError(f"Invalid parameter: {param}")
 
     def save_results(self, output_path: str, best=False) -> None:
-        """Processes the pdbqt outputs into a list of dictionaries."""
+        """Processes the pdbqt outputs into csv files."""
         # Get all ligand files from the output directory
         ligand_files = [
             os.path.join(self.config["dir"], f) for f in os.listdir(self.config["dir"])
@@ -157,7 +161,7 @@ class UniDock:
 
         # Save the best pose for each ligand if best=True
         if best:
-            df = self._get_best_pose(df)
+            df = self._get_best_poses(df)
             df.to_csv(output_path.replace(".csv", "_best.csv"), index=False)
 
     def _get_floats(self, string):
@@ -169,55 +173,54 @@ class UniDock:
         # Get numbers and convert them to float
         return [float(num) for num in matches]
 
-    def _get_best_pose(self, all_poses_df: pd.DataFrame):
+    def _get_best_poses(self, all_poses_df: pd.DataFrame):
         """Identifies best configuration for each ligand."""
-        # Group by ligand
-        grouped_ligands = all_poses_df.groupby("NAME")
-        # Get the index of the pose with the highest affinity (most negative score) for each group
-        best_poses_indices = grouped_ligands["AFFINITY"].idxmin()
-        # Select the poses with the highest affinity for each group
-        best_poses_df = all_poses_df.loc[best_poses_indices]
+        # Select all MODEL rows with a value of 1
+        best_poses_df = all_poses_df[all_poses_df["MODEL"] == 1]
         return best_poses_df
 
 
-# Params for running:
-# - smiles_file(smiles): str
-# - receptor_file(pdb): str
-# - bounding box details : dict
-# - output_dir: str
+@hydra.main(version_base=None, config_path="../../", config_name="config")
+def main(cfg: DictConfig) -> None:
+    # Convert receptor pdb file to pdbqt
+    if cfg.receptor.type == "pdb":
+        context(
+            pdb_convert,
+            cfg.ligands.path,
+            os.path.join(cfg.output.path, "processed/receptor.pdbqt"),
+        )
+
+        cfg.receptor.path = os.path.join(cfg.output.path, "processed/receptor.pdbqt")
 
 
-def run_unidock_with_smiles(
-    smiles_file: str, receptor_file: str, output_dir: str, bounding_box: dict
-):
-    # Retrieve small molcule SMILES from database
-    smiles = retrieve_smiles(smiles_file)
 
-    # Convert small molecule SMILES to .smi files
-    smiles_to_smi(smiles, os.path.join(output_dir, "processed/smi_ligands"))
+    # Convert ligand SMILES to pdbqt files
+    if cfg.ligands.type == "smiles":
 
-    # Convert small molecule smi file to pdbqt
-    context(
-        smi_convert,
-        os.path.join(output_dir, "processed/smi_ligands"),
-        os.path.join(output_dir, "processed/pdbqt_ligands"),
-    )
+        # Retrieve small molecule SMILES from database
+        smiles = retrieve_smiles(cfg.ligands.path)
 
-    # Convert target pdb file to pdbqt
-    context(
-        pdb_convert,
-        receptor_file,
-        os.path.join(output_dir, "processed/receptor.pdbqt"),
-    )
+        # Convert small molecule SMILES to .smi files
+        smiles_to_smi(smiles, os.path.join(cfg.output.path, "processed/smi_ligands"))
+
+        # Convert small molecule smi file to pdbqt
+        context(
+            smi_convert,
+            os.path.join(cfg.output.path, "processed/smi_ligands"),
+            os.path.join(cfg.output.path, "processed/pdbqt_ligands"),
+        )
+
+        cfg.ligands.path = os.path.join(cfg.output.path, "processed/pdbqt_ligands")
+
 
     # Create Uni-Dock object
     unidock = UniDock(
         {
-            "receptor": os.path.join(output_dir, "processed/receptor.pdbqt"),
-            "gpu_batch": os.path.join(output_dir, "processed/pdbqt_ligands"),
-            "dir": output_dir,
-            **bounding_box,
-            "search_mode": "fast",
+            "receptor": cfg.receptor.path,
+            "gpu_batch": cfg.ligands.path,
+            "dir": os.path.join(cfg.output.path, "poses"),
+            **cfg.search_space,
+            "search_mode": cfg.optional.search_mode,
         }
     )
 
@@ -225,18 +228,7 @@ def run_unidock_with_smiles(
     unidock.run()
 
     # Save outputs
-    unidock.save_results(os.path.join(output_dir, "results.csv"), best=True)
-
-
-def main():
-    Config = builds(run_unidock_with_smiles, populate_full_signature=True)
-    wrapped_fn = zen(run_unidock_with_smiles)
-    job = launch(
-        Config,
-        wrapped_fn,
-        overrides=["smiles_file=", "receptor_file=", "output_dir=", "bounding_box="],
-        version_base="1.1",
-    )
+    unidock.save_results(os.path.join(cfg.output.path, "results.csv"), best=True)
 
 
 if __name__ == "__main__":

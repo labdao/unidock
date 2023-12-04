@@ -5,7 +5,7 @@ import re
 import pandas as pd
 import hydra
 from omegaconf import DictConfig
-from unidock._mol_convert import (
+from ._mol_convert import (
     retrieve_smiles,
     smi_convert,
     pdb_convert,
@@ -180,7 +180,7 @@ class UniDock:
         return best_poses_df
 
 
-@hydra.main(version_base=None, config_path="../../", config_name="config")
+@hydra.main(version_base=None, config_path="../../data", config_name="config")
 def main(cfg: DictConfig) -> None:
     # Convert receptor pdb file to pdbqt
     if cfg.receptor.type == "pdb":
@@ -191,8 +191,6 @@ def main(cfg: DictConfig) -> None:
         )
 
         cfg.receptor.path = os.path.join(cfg.output.path, "processed/receptor.pdbqt")
-
-
 
     # Convert ligand SMILES to pdbqt files
     if cfg.ligands.type == "smiles":

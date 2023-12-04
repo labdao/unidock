@@ -12,7 +12,7 @@ RUN apt-get update && apt install -y cmake \
 # Install uni-dock
 RUN cd opt && \
     wget https://github.com/dptech-corp/Uni-Dock/releases/download/1.0.0/unidock && \
-    chmod +x ./unidock
+    chmod +x unidock
 
 # Download AFDR tooling
 RUN cd opt && \
@@ -23,14 +23,20 @@ RUN cd opt && \
     echo "Y" | ./install.sh -d afdr -c 0
 
 # Install python dependencies
-RUN pip install duckdb pandas
+RUN pip install duckdb pandas hydra-core --upgrade
 
-ENV PATH="./bin:${PATH}"
-
+# Ensure binaries are in path
+ENV PATH="/opt:${PATH}"
 ENV PATH="/opt/ADFRsuite_x86_64Linux_1.0/afdr/bin:${PATH}"
 
-# Copy source files into app folder
-COPY ./src /app
+# Copy source folder into app folder
+COPY ./src /app/src
+
+# Create an output directory
+RUN mkdir ./data
 
 # Move into app folder
 WORKDIR /app
+
+# Run the app
+CMD ["python3", "-m", "src.unidock.run"]

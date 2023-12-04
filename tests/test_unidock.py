@@ -1,5 +1,5 @@
-import pytest
 from pathlib import Path
+import pytest
 from unidock.run import retrieve_smiles, smiles_to_smi, smi_convert, context, UniDock
 
 @pytest.fixture(scope="session")

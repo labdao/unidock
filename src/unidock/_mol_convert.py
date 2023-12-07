@@ -5,7 +5,10 @@ import tempfile
 from typing import List, Callable
 from pathlib import Path
 from functools import wraps
+from concurrent.futures import ThreadPoolExecutor
 import duckdb
+from rdkit import Chem
+from rdkit.Chem import AllChem
 
 
 VALID_FILE_TYPES = ["smi", "pdb", "parquet"]
@@ -27,7 +30,7 @@ def retrieve_smiles(input_path: str) -> List[str]:
 
 
 def smiles_to_smi(smiles_strings: List[str], output_path: str) -> None:
-    """Write SMILES strings to smi file"""
+    """Convert SMILES strings to smi file"""
     # Create an empty output directory if not present
     if not os.path.exists(output_path):
         os.makedirs(output_path)
@@ -37,6 +40,29 @@ def smiles_to_smi(smiles_strings: List[str], output_path: str) -> None:
         output_file = os.path.join(output_path, f"ligand_{i}.smi")
         with open(output_file, "w", encoding="utf-8") as file:
             file.write(f"{smiles_string}\n")
+
+def smiles_to_sdf(smiles_strings: List[str], output_path: str) -> None:
+    """Convert SMILES strings to sdf files"""
+    # Create an empty output directory if not present
+    if not os.path.exists(output_path):
+        os.makedirs(output_path)
+
+     # Function to process each SMILES string
+    def _process_smiles(i, smiles_string, output_path):
+        try:
+            mol = Chem.MolFromSmiles(smiles_string)
+            mol = Chem.AddHs(mol)
+            AllChem.EmbedMolecule(mol, AllChem.ETKDG())
+            file_path = os.path.join(output_path, f'ligand_{i+1}.sdf')
+            with Chem.SDWriter(file_path) as writer:
+                writer.write(mol)
+            return f"Processed: {file_path}"
+        except Exception as e:
+            return f"Error with {smiles_string}: {str(e)}"
+
+    # Using ThreadPoolExecutor
+    with ThreadPoolExecutor(max_workers=5) as executor:  # Adjust max_workers as needed
+        futures = [executor.submit(process_smiles, i, smiles, output_path) for i, smiles in enumerate(smiles_strings)]
 
 
 ConvertFn = Callable[[str, str], None]

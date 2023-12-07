@@ -10,20 +10,16 @@ RUN apt-get update && apt install -y cmake \
     ln -s /usr/bin/python3 /usr/bin/python
 
 # Install uni-dock
-RUN cd opt && \
-    wget https://github.com/dptech-corp/Uni-Dock/releases/download/1.0.0/unidock && \
-    chmod +x unidock
-
-# Download AFDR tooling
-RUN cd opt && \
-    wget https://ccsb.scripps.edu/adfr/download/1038/ -O adfr.tar.gz && \
-    tar -xzvf adfr.tar.gz && \
-    rm adfr.tar.gz && \
-    cd ADFRsuite_x86_64Linux_1.0 && \
-    echo "Y" | ./install.sh -d afdr -c 0
+RUN git clone https://github.com/dptech-corp/Uni-Dock.git && \
+    cd Uni-Dock/unidock && \
+    cmake -B build && \
+    cmake --build build -j4 && \
+    cmake --install build && \
+    cd ../unidock_tools && \
+    python setup.py install
 
 # Install python dependencies
-RUN pip install duckdb pandas hydra-core --upgrade
+RUN pip install duckdb pandas hydra-core tqdm --upgrade
 
 # Ensure binaries are in path
 ENV PATH="/opt:${PATH}"

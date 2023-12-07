@@ -7,9 +7,8 @@ import hydra
 from omegaconf import DictConfig
 from ._mol_convert import (
     retrieve_smiles,
-    smi_convert,
     pdb_convert,
-    smiles_to_smi,
+    smiles_to_sdf,
     context,
 )
 
@@ -73,7 +72,7 @@ class UniDock:
         os.makedirs(self.config["dir"])
 
         # Construct the command
-        command = ["unidock"]
+        command = ["Unidock"]
         for param, value in self.config.items():
             # Add the list of filepaths if the parameter is "gpu_batch"
             if param == "gpu_batch":
@@ -198,17 +197,10 @@ def main(cfg: DictConfig) -> None:
         # Retrieve small molecule SMILES from database
         smiles = retrieve_smiles(cfg.ligands.path)
 
-        # Convert small molecule SMILES to .smi files
-        smiles_to_smi(smiles, os.path.join(cfg.output.path, "processed/smi_ligands"))
+        # Convert small molecule SMILES to sdf files
+        smiles_to_sdf(smiles, os.path.join(cfg.output.path, "processed/sdf_ligands"))
 
-        # Convert small molecule smi file to pdbqt
-        context(
-            smi_convert,
-            os.path.join(cfg.output.path, "processed/smi_ligands"),
-            os.path.join(cfg.output.path, "processed/pdbqt_ligands"),
-        )
-
-        cfg.ligands.path = os.path.join(cfg.output.path, "processed/pdbqt_ligands")
+        cfg.ligands.path = os.path.join(cfg.output.path, "processed/sdf_ligands")
 
 
     # Create Uni-Dock object

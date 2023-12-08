@@ -5,7 +5,10 @@ import tempfile
 from typing import List, Callable
 from pathlib import Path
 from functools import wraps
+from concurrent.futures import ThreadPoolExecutor
 import duckdb
+from rdkit import Chem
+from rdkit.Chem import AllChem
 
 
 VALID_FILE_TYPES = ["smi", "pdb", "parquet"]
@@ -26,8 +29,8 @@ def retrieve_smiles(input_path: str) -> List[str]:
     return results_as_strings
 
 
-def smiles_to_smi(smiles_strings: List[str], output_path: str) -> None:
-    """Write SMILES strings to smi file"""
+def smiles_to_multiple_smis(smiles_strings: List[str], output_path: str) -> None:
+    """Convert SMILES strings to multiple smi files"""
     # Create an empty output directory if not present
     if not os.path.exists(output_path):
         os.makedirs(output_path)
@@ -36,7 +39,47 @@ def smiles_to_smi(smiles_strings: List[str], output_path: str) -> None:
     for i, smiles_string in enumerate(smiles_strings):
         output_file = os.path.join(output_path, f"ligand_{i}.smi")
         with open(output_file, "w", encoding="utf-8") as file:
-            file.write(f"{smiles_string}\n")
+            file.write(f"{smiles_string}  {i}\n")
+
+
+def smiles_to_single_smi(smiles_strings: List[str], output_path: str) -> None:
+    """Convert SMILES strings to a single smi file"""
+    # Create an empty output directory if not present
+    if not os.path.exists(output_path):
+        os.makedirs(output_path)
+
+    # Save all SMILES strings to a single smi file
+    output_file = os.path.join(output_path, "ligands.smi")
+    with open(output_file, "w", encoding="utf-8") as file:
+        for i, smiles_string in enumerate(smiles_strings):
+            file.write(f"{smiles_string}  {i}\n")
+
+
+def smiles_to_sdf(smiles_strings: List[str], output_path: str) -> None:
+    """Convert SMILES strings to sdf files"""
+    # Function to process each SMILES string
+    def _process_smiles(i, smiles_string, output_path):
+        try:
+            mol = Chem.MolFromSmiles(smiles_string)
+            mol = Chem.AddHs(mol)
+            AllChem.EmbedMolecule(mol, AllChem.ETKDG())
+            file_path = os.path.join(output_path, f"ligand_{i+1}.sdf")
+            with Chem.SDWriter(file_path) as writer:
+                writer.write(mol)
+            return f"Processed: {file_path}"
+        except Exception as e:
+            return f"Error with {smiles_string}: {str(e)}"
+ 
+    # Create an empty output directory if not present
+    if not os.path.exists(output_path):
+        os.makedirs(output_path)
+
+    # Using ThreadPoolExecutor
+    with ThreadPoolExecutor(max_workers=5) as executor:
+        futures = [
+            executor.submit(_process_smiles, i, smiles, output_path)
+            for i, smiles in enumerate(smiles_strings)
+        ]
 
 
 ConvertFn = Callable[[str, str], None]
@@ -44,7 +87,6 @@ ConvertFn = Callable[[str, str], None]
 
 def context(strategy: ConvertFn, input_path: str, output_path: str) -> None:
     """Converts chemical formats to pdbqt"""
-    # Checks to see if input_path is a directory
     if os.path.isdir(input_path):
         # Creates output directory if doesn't exist
         if not os.path.exists(output_path):
@@ -57,6 +99,7 @@ def context(strategy: ConvertFn, input_path: str, output_path: str) -> None:
             output_file = os.path.join(output_path, f"{Path(input_file).stem}.pdbqt")
             strategy(input_file_with_dir, output_file)
     else:
+        # Converts single file if input path is file
         strategy(input_path, output_path)
 
 
@@ -75,26 +118,26 @@ def check_file_type(func):
 
 
 @check_file_type
-def smi_convert(input_path: str, output_path: str) -> None:
-    """Convert from .smi format to pdbqt"""
+def smi_to_pdbqt(input_path: str, output_path: str) -> None:
+    """Convert from smi format to pdbqt"""
     subprocess.run(
         [
             "obabel",
-            "-i",
-            "smi",
+            "-ismi",
             input_path,
-            "--gen3d",
-            "-o",
-            "pdbqt",
+            "-opdbqt",
             "-O",
             output_path,
+            "--gen3d",
+            "-h",
+            "-m",
         ],
         check=True,
     )
 
 
 @check_file_type
-def pdb_convert(input_path: str, output_path: str) -> None:
+def pdb_to_pdbqt(input_path: str, output_path: str) -> None:
     """Converts .pdb to pdbqt"""
     with tempfile.NamedTemporaryFile(suffix=".pdb") as tmp:
         subprocess.run(["reduce", input_path], stdout=tmp, check=False)

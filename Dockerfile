@@ -6,7 +6,7 @@ RUN apt-get update && apt install -y cmake \
     libsm6 \
     wget \
     openbabel \
-    python3 git python3-pip && \
+    apt git python3-pip && \
     ln -s /usr/bin/python3 /usr/bin/python
 
 # Install uni-dock
@@ -23,7 +23,7 @@ RUN cd opt && \
     echo "Y" | ./install.sh -d afdr -c 0
 
 # Install python dependencies
-RUN pip install duckdb pandas hydra-core --upgrade
+RUN pip install duckdb pandas hydra-core tqdm rdkit --upgrade
 
 # Ensure binaries are in path
 ENV PATH="/opt:${PATH}"

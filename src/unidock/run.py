@@ -7,9 +7,9 @@ import hydra
 from omegaconf import DictConfig
 from ._mol_convert import (
     retrieve_smiles,
-    smi_convert,
-    pdb_convert,
-    smiles_to_smi,
+    pdb_to_pdbqt,
+    smi_to_pdbqt,
+    smiles_to_single_smi,
     context,
 )
 
@@ -68,7 +68,7 @@ class UniDock:
             ligand_dir = self.config["gpu_batch"]
             ligand_files = os.listdir(ligand_dir)
             ligand_files = [os.path.join(ligand_dir, file) for file in ligand_files]
- 
+
         # Create output poses directory
         os.makedirs(self.config["dir"])
 
@@ -182,35 +182,33 @@ class UniDock:
 
 @hydra.main(version_base=None, config_path="../../data", config_name="config")
 def main(cfg: DictConfig) -> None:
-    # Convert receptor pdb file to pdbqt
-    if cfg.receptor.type == "pdb":
-        context(
-            pdb_convert,
-            cfg.ligands.path,
-            os.path.join(cfg.output.path, "processed/receptor.pdbqt"),
-        )
-
-        cfg.receptor.path = os.path.join(cfg.output.path, "processed/receptor.pdbqt")
 
     # Convert ligand SMILES to pdbqt files
     if cfg.ligands.type == "smiles":
-
         # Retrieve small molecule SMILES from database
         smiles = retrieve_smiles(cfg.ligands.path)
 
-        # Convert small molecule SMILES to .smi files
-        smiles_to_smi(smiles, os.path.join(cfg.output.path, "processed/smi_ligands"))
+        # Convert small molecule SMILES to sdf files
+        smiles_to_single_smi(smiles, os.path.join(cfg.output.path, "processed/smi_ligands"))
 
-        # Convert small molecule smi file to pdbqt
         context(
-            smi_convert,
+            smi_to_pdbqt,
             os.path.join(cfg.output.path, "processed/smi_ligands"),
-            os.path.join(cfg.output.path, "processed/pdbqt_ligands"),
+            os.path.join(cfg.output.path, "processed/pdbqt_ligands")
         )
 
         cfg.ligands.path = os.path.join(cfg.output.path, "processed/pdbqt_ligands")
 
+    # Convert receptor pdb file to pdbqt
+    if cfg.receptor.type == "pdb":
+        context(
+            pdb_to_pdbqt,
+            cfg.receptor.path,
+            os.path.join(cfg.output.path, "processed/receptor.pdbqt"),
+        )
 
+        cfg.receptor.path = os.path.join(cfg.output.path, "processed/receptor.pdbqt")
+    
     # Create Uni-Dock object
     unidock = UniDock(
         {

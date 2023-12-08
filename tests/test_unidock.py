@@ -1,6 +1,6 @@
 from pathlib import Path
 import pytest
-from unidock.run import retrieve_smiles, smiles_to_smi, smi_convert, context, UniDock
+from unidock.run import retrieve_smiles, smi_convert, context, UniDock
 
 @pytest.fixture(scope="session")
 def pdbqt_ligands(tmpdir_factory):

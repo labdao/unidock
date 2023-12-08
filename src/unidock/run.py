@@ -73,7 +73,7 @@ class UniDock:
         os.makedirs(self.config["dir"])
 
         # Construct the command
-        command = ["Unidock"]
+        command = ["unidock"]
         for param, value in self.config.items():
             # Add the list of filepaths if the parameter is "gpu_batch"
             if param == "gpu_batch":
@@ -182,15 +182,6 @@ class UniDock:
 
 @hydra.main(version_base=None, config_path="../../data", config_name="config")
 def main(cfg: DictConfig) -> None:
-    # Convert receptor pdb file to pdbqt
-    if cfg.receptor.type == "pdb":
-        context(
-            pdb_to_pdbqt,
-            cfg.ligands.path,
-            os.path.join(cfg.output.path, "processed/receptor.pdbqt"),
-        )
-
-        cfg.receptor.path = os.path.join(cfg.output.path, "processed/receptor.pdbqt")
 
     # Convert ligand SMILES to pdbqt files
     if cfg.ligands.type == "smiles":
@@ -198,7 +189,7 @@ def main(cfg: DictConfig) -> None:
         smiles = retrieve_smiles(cfg.ligands.path)
 
         # Convert small molecule SMILES to sdf files
-        smiles_to_single_smi(smiles, os.path.join(cfg.output.path, "processed/sdf_ligands"))
+        smiles_to_single_smi(smiles, os.path.join(cfg.output.path, "processed/smi_ligands"))
 
         context(
             smi_to_pdbqt,
@@ -206,9 +197,18 @@ def main(cfg: DictConfig) -> None:
             os.path.join(cfg.output.path, "processed/pdbqt_ligands")
         )
 
-        cfg.ligands.path = os.path.join(cfg.output.path, "processed/sdf_ligands")
+        cfg.ligands.path = os.path.join(cfg.output.path, "processed/pdbqt_ligands")
 
+    # Convert receptor pdb file to pdbqt
+    if cfg.receptor.type == "pdb":
+        context(
+            pdb_to_pdbqt,
+            cfg.receptor.path,
+            os.path.join(cfg.output.path, "processed/receptor.pdbqt"),
+        )
 
+        cfg.receptor.path = os.path.join(cfg.output.path, "processed/receptor.pdbqt")
+    
     # Create Uni-Dock object
     unidock = UniDock(
         {

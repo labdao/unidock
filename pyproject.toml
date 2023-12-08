@@ -27,3 +27,12 @@ dev-dependencies = [
 
 [tool.hatch.metadata]
 allow-direct-references = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--tb=short"
+xfail_strict = true
+pythonpath = "src"
+filterwarnings = [
+  "error"
+]

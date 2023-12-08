@@ -7,8 +7,9 @@ import hydra
 from omegaconf import DictConfig
 from ._mol_convert import (
     retrieve_smiles,
-    pdb_convert,
-    smiles_to_sdf,
+    pdb_to_pdbqt,
+    smi_to_pdbqt,
+    smiles_to_single_smi,
     context,
 )
 
@@ -67,7 +68,7 @@ class UniDock:
             ligand_dir = self.config["gpu_batch"]
             ligand_files = os.listdir(ligand_dir)
             ligand_files = [os.path.join(ligand_dir, file) for file in ligand_files]
- 
+
         # Create output poses directory
         os.makedirs(self.config["dir"])
 
@@ -184,7 +185,7 @@ def main(cfg: DictConfig) -> None:
     # Convert receptor pdb file to pdbqt
     if cfg.receptor.type == "pdb":
         context(
-            pdb_convert,
+            pdb_to_pdbqt,
             cfg.ligands.path,
             os.path.join(cfg.output.path, "processed/receptor.pdbqt"),
         )
@@ -193,12 +194,17 @@ def main(cfg: DictConfig) -> None:
 
     # Convert ligand SMILES to pdbqt files
     if cfg.ligands.type == "smiles":
-
         # Retrieve small molecule SMILES from database
         smiles = retrieve_smiles(cfg.ligands.path)
 
         # Convert small molecule SMILES to sdf files
-        smiles_to_sdf(smiles, os.path.join(cfg.output.path, "processed/sdf_ligands"))
+        smiles_to_single_smi(smiles, os.path.join(cfg.output.path, "processed/sdf_ligands"))
+
+        context(
+            smi_to_pdbqt,
+            os.path.join(cfg.output.path, "processed/smi_ligands"),
+            os.path.join(cfg.output.path, "processed/pdbqt_ligands")
+        )
 
         cfg.ligands.path = os.path.join(cfg.output.path, "processed/sdf_ligands")
 

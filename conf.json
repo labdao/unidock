@@ -1,0 +1,205 @@
+{
+    "name": "unidock v0.1",
+    "description": "Uni-Dock is a GPU-accelerated molecular docking program.",
+    "author": "dptech-corp",
+    "github": "https://github.com/dptech-corp/Uni-Dock",
+    "paper": "https://pubs.acs.org/doi/10.1021/acs.jctc.2c01145",
+    "task": "molecular docking",
+    "baseCommand": [],
+    "arguments": [],
+    "dockerPull": "quay.io/labdao/uni-dock@sha256:3b746589530d29e459e03a05bab3a9f7282db777950917e14b50b9a5a0235a0a",
+    "gpuBool": true,
+    "memoryGB": 12,
+    "cpu": 5,
+    "networkBool": true,
+    "inputs": {
+        "receptor_path": {
+            "type": "string",
+            "description": "The file path receptor to dock against.",
+            "array": false,
+            "glob": [
+                ""
+            ],
+            "default": "my_receptor.pdb",
+            "min": "",
+            "max": "",
+            "example": "my_receptor.pdb",
+            "grouping": "receptor",
+            "position": "101",
+            "required": true
+        },
+        "receptor_type": {
+            "type": "string",
+            "description": "The file type of the receptor.",
+            "array": false,
+            "glob": [
+                ""
+            ],
+            "default": "pdb",
+            "min": "",
+            "max": "",
+            "example": "pdb",
+            "grouping": "receptor",
+            "position": "102",
+            "required": true
+        },
+        "center_x": {
+            "type": "number",
+            "description": "The x coordinate of the center of the docking box.",
+            "array": false,
+            "glob": [
+                ""
+            ],
+            "default": "0",
+            "min": "",
+            "max": "",
+            "example": "0",
+            "grouping": "receptor",
+            "position": "103",
+            "required": true
+        },
+        "center_y": {
+            "type": "number",
+            "description": "The y coordinate of the center of the docking box.",
+            "array": false,
+            "glob": [
+                ""
+            ],
+            "default": "0",
+            "min": "",
+            "max": "",
+            "example": "0",
+            "grouping": "receptor",
+            "position": "104",
+            "required": true
+        },
+        "center_z": {
+            "type": "number",
+            "description": "The z coordinate of the center of the docking box.",
+            "array": false,
+            "glob": [
+                ""
+            ],
+            "default": "0",
+            "min": "",
+            "max": "",
+            "example": "0",
+            "grouping": "receptor",
+            "position": "105",
+            "required": true
+        },
+        "size_x": {
+            "type": "number",
+            "description": "The x size of the docking box.",
+            "array": false,
+            "glob": [
+                ""
+            ],
+            "default": "20",
+            "min": "",
+            "max": "",
+            "example": "20",
+            "grouping": "receptor",
+            "position": "106",
+            "required": true
+        },
+        "size_y": {
+            "type": "number",
+            "description": "The y size of the docking box.",
+            "array": false,
+            "glob": [
+                ""
+            ],
+            "default": "20",
+            "min": "",
+            "max": "",
+            "example": "20",
+            "grouping": "receptor",
+            "position": "107",
+            "required": true
+        },
+        "size_z": {
+            "type": "number",
+            "description": "The z size of the docking box.",
+            "array": false,
+            "glob": [
+                ""
+            ],
+            "default": "20",
+            "min": "",
+            "max": "",
+            "example": "20",
+            "grouping": "receptor",
+            "position": "108",
+            "required": true
+        },
+        "ligand_path": {
+            "type": "string",
+            "description": "The file path of the ligands to use for docking.",
+            "array": false,
+            "glob": [
+                ""
+            ],
+            "default": "my_smiles.parquet",
+            "min": "",
+            "max": "",
+            "example": "my_smiles.parquet",
+            "grouping": "ligands",
+            "position": "201",
+            "required": true
+        },
+        "ligand_type": {
+            "type": "string",
+            "description": "The file type of the ligands to use for docking.",
+            "array": false,
+            "glob": [
+                ""
+            ],
+            "default": "smiles",
+            "min": "",
+            "max": "",
+            "example": "smiles",
+            "grouping": "ligands",
+            "position": "202",
+            "required": true
+        },
+        "search_mode": {
+            "type": "string",
+            "description": "The search mode to use for docking.",
+            "array": false,
+            "glob": [
+                ""
+            ],
+            "default": "fast",
+            "min": "",
+            "max": "",
+            "example": "fast",
+            "grouping": "config",
+            "position": "301",
+            "required": true
+        }
+    },
+    "outputs": {
+        "all_outputs": {
+            "type": "Array",
+            "item": "File",
+            "glob": [
+                "*.zip"
+            ]
+        },
+        "best_design": {
+            "type": "File",
+            "item": "",
+            "glob": [
+                "result_best.csv"
+            ]
+        },
+        "all_scores": {
+            "type": "File",
+            "item": "",
+            "glob": [
+                "results.csv"
+            ]
+        }
+    }
+}
